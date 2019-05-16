@@ -1,7 +1,7 @@
 #include "AlpsT4USB.hpp"
 
 
-#define super IOService
+#define super IOHIDEventService
 OSDefineMetaClassAndStructors(AlpsT4USBEventDriver, IOHIDEventService);
 
 void AlpsT4USBEventDriver::enterPrecisionTouchpadMode() {
@@ -113,7 +113,9 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
             
         }
         
+        
     }
+    
     
     VoodooI2CMultitouchEvent tp_event;
     tp_event.contact_count = contactCount;
@@ -295,7 +297,7 @@ bool AlpsT4USBEventDriver::start(IOService* provider) {
     setProperty("VoodooI2CServices Supported", OSBoolean::withBoolean(true));
     
      IOLog("%s::%s Start Finished --  VoodooI2C \n", getName(), name);
-    
+    mt_interface->registerService();
     return true;
 }
 

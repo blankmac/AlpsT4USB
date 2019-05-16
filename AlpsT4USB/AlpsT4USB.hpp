@@ -75,7 +75,7 @@ struct __attribute__((__packed__)) t4_input_report {
     UInt16 timeStamp;
 };
 
-class AlpsT4USBEventDriver : public IOService {
+class AlpsT4USBEventDriver : public IOHIDEventService {
     OSDeclareDefaultStructors(AlpsT4USBEventDriver);
     
 public:
@@ -90,7 +90,10 @@ public:
     
     bool handleStart(IOService* provider);
     void handleStop(IOService* provider);
+    
     virtual IOReturn message(UInt32 type, IOService* provider, void* argument) override;
+    
+
     
     /* @inherit */
     IOReturn setPowerState(unsigned long whichState, IOService* whatDevice) override;
@@ -101,7 +104,7 @@ public:
     void put_unaligned_le32(uint32_t val, void *p);
     void __put_unaligned_le16(uint16_t val, uint8_t *p);
     void __put_unaligned_le32(uint32_t val, uint8_t *p);
-    IOReturn publishMultitouchInterface();
+    bool publish_multitouch_interface();
     const char* getProductName();
     
     
@@ -109,7 +112,7 @@ protected:
     const char* name;
     IOHIDInterface* hid_interface;
     IOHIDDevice* hid_device;
-    VoodooI2CMultitouchInterface* multitouch_interface;
+    VoodooI2CMultitouchInterface* mt_interface;
     bool should_have_interface = true;
     
 private:

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>KEXT</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>IOKitPersonalities</key>
+	<dict>
+		<key>AlpsT4USBEventDriver</key>
+		<dict>
+			<key>CFBundleIdentifier</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>DeviceUsagePairs</key>
+			<array>
+				<dict>
+					<key>DeviceUsage</key>
+					<integer>2</integer>
+					<key>DeviceUsagePage</key>
+					<integer>65281</integer>
+				</dict>
+			</array>
+			<key>IOPropertyMatch</key>
+			<dict>
+				<key>ProductID</key>
+				<integer>4630</integer>
+			</dict>
+			<key>IOProbeScore</key>
+			<integer>300</integer>
+			<key>IOClass</key>
+			<string>AlpsT4USBEventDriver</string>
+			<key>IOProviderClass</key>
+			<string>IOHIDInterface</string>
+			<key>RM,deliverNotifications</key>
+			<true/>
+			<key>QuietTimeAfterTyping</key>
+			<integer>500</integer>
+			<key>VendorID</key>
+			<integer>1102</integer>
+			<key>ProductID</key>
+			<integer>4630</integer>
+		</dict>
+	</dict>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2019 blankmac. All rights reserved.</string>
+	<key>OSBundleLibraries</key>
+	<dict>
+		<key>com.alexandred.VoodooI2C</key>
+		<string>2.0</string>
+		<key>com.apple.iokit.IOHIDFamily</key>
+		<string>2.0</string>
+		<key>com.apple.kpi.iokit</key>
+		<string>14</string>
+		<key>com.apple.kpi.libkern</key>
+		<string>14</string>
+		<key>com.apple.kpi.mach</key>
+		<string>13.0</string>
+	</dict>
+</dict>
+</plist>

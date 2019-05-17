@@ -38,7 +38,7 @@
 			<key>IOProviderClass</key>
 			<string>IOHIDInterface</string>
 			<key>IOProbeScore</key>
-			<integer>9999</integer>
+			<integer>400</integer>
 			<key>RM,deliverNotifications</key>
 			<true/>
 			<key>QuietTimeAfterTyping</key>

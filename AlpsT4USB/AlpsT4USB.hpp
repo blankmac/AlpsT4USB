@@ -104,7 +104,7 @@ public:
     void put_unaligned_le32(uint32_t val, void *p);
     void __put_unaligned_le16(uint16_t val, uint8_t *p);
     void __put_unaligned_le32(uint32_t val, uint8_t *p);
-    bool publish_multitouch_interface();
+    IOReturn publishMultitouchInterface();
     const char* getProductName();
     
     
@@ -112,7 +112,7 @@ protected:
     const char* name;
     IOHIDInterface* hid_interface;
     IOHIDDevice* hid_device;
-    VoodooI2CMultitouchInterface* mt_interface;
+    VoodooI2CMultitouchInterface* multitouch_interface;
     bool should_have_interface = true;
     
 private:

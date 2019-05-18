@@ -1,3 +1,11 @@
+
+/*This code is derived and adapted from VoodooI2CHID's Multitouch Event Driver and Precision
+Touchpad Event Driver (https://github.com/alexandred/VoodooI2C) and the Linux kernel driver
+for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/hid/hid-alps.c)*/
+
+
+
+
 #ifndef AlpsT4USBEventDriver_hpp
 #define AlpsT4USBEventDriver_hpp
 

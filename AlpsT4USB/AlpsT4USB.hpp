@@ -85,8 +85,10 @@ public:
     
     /* @inherit */
     bool start(IOService* provider) override;
-    
+    void stop(IOService* provider);
     bool init(OSDictionary *properties) override;
+    AlpsT4USBEventDriver* probe(IOService* provider, SInt32* score) override;
+
     
     bool handleStart(IOService* provider);
     void handleStop(IOService* provider);
@@ -94,7 +96,6 @@ public:
     virtual IOReturn message(UInt32 type, IOService* provider, void* argument) override;
     
 
-    
     /* @inherit */
     IOReturn setPowerState(unsigned long whichState, IOService* whatDevice) override;
     
@@ -112,7 +113,7 @@ protected:
     const char* name;
     IOHIDInterface* hid_interface;
     IOHIDDevice* hid_device;
-    VoodooI2CMultitouchInterface* multitouch_interface;
+    VoodooI2CMultitouchInterface* mt_interface;
     bool should_have_interface = true;
     
 private:

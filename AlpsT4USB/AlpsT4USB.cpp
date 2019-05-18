@@ -77,8 +77,8 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
         
         VoodooI2CDigitiserTransducer* transducer = OSDynamicCast(VoodooI2CDigitiserTransducer,  transducers->getObject(i));
         transducer->type = kDigitiserTransducerFinger;
-        transducer->logical_max_x = multitouch_interface->logical_max_x;
-        transducer->logical_max_y = multitouch_interface->logical_max_y;
+        transducer->logical_max_x = mt_interface->logical_max_x;
+        transducer->logical_max_y = mt_interface->logical_max_y;
         transducer->id = 9;
         if (!transducer) {
             continue;
@@ -122,7 +122,7 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
     tp_event.transducers = transducers;
     
     
-    multitouch_interface->handleInterruptReport(tp_event, timestamp);
+    mt_interface->handleInterruptReport(tp_event, timestamp);
     
     
     
@@ -137,32 +137,30 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     if (!hid_interface)
         return false;
     
-    if (hid_interface->getTransport()->getCStringNoCopy() != kIOHIDTransportUSBValue)
-        hid_interface->setProperty("VoodooI2CServices Supported", OSBoolean::withBoolean(true));
-    
     if (!hid_interface->open(this, 0, OSMemberFunctionCast(IOHIDInterface::InterruptReportAction, this, &AlpsT4USBEventDriver::handleInterruptReport), NULL))
         return false;
-    
-    
+
     hid_device = OSDynamicCast(IOHIDDevice, hid_interface->getParentEntry(gIOServicePlane));
     
     if (!hid_device)
         return false;
-    
+
     name = getProductName();
-    
+
     PMinit();
-    hid_interface->joinPMtree(this);
+    
     registerPowerDriver(this, VoodooI2CIOPMPowerStates, kVoodooI2CIOPMNumberPowerStates);
+
+    hid_device->joinPMtree(this);
     
 
     publishMultitouchInterface();
     
-    if (multitouch_interface) {
-        multitouch_interface->logical_max_x = 5120;
-        multitouch_interface->logical_max_y = 3072;
-        multitouch_interface->physical_max_x = 1024;
-        multitouch_interface->physical_max_y = 614;
+    if (mt_interface) {
+        mt_interface->logical_max_x = 5120;
+        mt_interface->logical_max_y = 3072;
+        mt_interface->physical_max_x = 1024;
+        mt_interface->physical_max_y = 614;
         
     }
     IOLog("%s::%s Putting device into Precision Touchpad Mode\n", getName(), name);
@@ -179,9 +177,12 @@ IOReturn AlpsT4USBEventDriver::setPowerState(unsigned long whichState, IOService
     if (!whichState) {
         if (awake)
             awake = false;
+        IOLog("%s::%s Going to sleep\n", getName(), name);
     } else {
         if (!awake) {
             IOSleep(10);
+            
+            IOLog("%s::%s Awake, putting device in precision mode\n", getName(), name);
             enterPrecisionTouchpadMode();
             
             awake = true;
@@ -189,6 +190,8 @@ IOReturn AlpsT4USBEventDriver::setPowerState(unsigned long whichState, IOService
     }
     return kIOPMAckImplied;
 }
+
+
 
 UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offset, unsigned long length)
 {
@@ -237,34 +240,34 @@ void AlpsT4USBEventDriver::__put_unaligned_le32(uint32_t val, uint8_t *p)
 }
 
 IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
-    multitouch_interface = new VoodooI2CMultitouchInterface;
+    mt_interface = new VoodooI2CMultitouchInterface;
     
-    if (!multitouch_interface || !multitouch_interface->init(NULL)) {
+    if (!mt_interface || !mt_interface->init(NULL)) {
         goto exit;
     }
     
-    if (!multitouch_interface->attach(this)) {
+    if (!mt_interface->attach(this)) {
         goto exit;
     }
     
-    if (!multitouch_interface->start(this)) {
+    if (!mt_interface->start(this)) {
         goto exit;
     }
     
-    multitouch_interface->setProperty(kIOHIDVendorIDKey, 0x44e, 32);
-    multitouch_interface->setProperty(kIOHIDProductIDKey, 0x1216, 32);
+    mt_interface->setProperty(kIOHIDVendorIDKey, 0x44e, 32);
+    mt_interface->setProperty(kIOHIDProductIDKey, 0x1216, 32);
 
-    multitouch_interface->setProperty(kIOHIDDisplayIntegratedKey, OSBoolean::withBoolean(false));
+    mt_interface->setProperty(kIOHIDDisplayIntegratedKey, OSBoolean::withBoolean(false));
     
-    multitouch_interface->registerService();
+    mt_interface->registerService();
     
     return kIOReturnSuccess;
     
 exit:
-    if (multitouch_interface) {
-        multitouch_interface->stop(this);
-        // multitouch_interface->release();
-        // multitouch_interface = NULL;
+    if (mt_interface) {
+        mt_interface->stop(this);
+        mt_interface->release();
+        mt_interface = NULL;
     }
     
     return kIOReturnError;
@@ -293,22 +296,47 @@ bool AlpsT4USBEventDriver::start(IOService* provider) {
         max_after_typing = quietTimeAfterTyping->unsigned64BitValue() * 1000000;
     
     setProperty("VoodooI2CServices Supported", OSBoolean::withBoolean(true));
-    
-    
-     IOLog("%s::%s Start Finished --  VoodooI2C \n", getName(), name);
- //   multitouch_interface->registerService();
+
+
     return true;
 }
 
 void AlpsT4USBEventDriver::handleStop(IOService* provider) {
-    if (multitouch_interface) {
-        multitouch_interface->stop(this);
+
+    if (mt_interface) {
+        mt_interface->stop(this);
+        mt_interface->release();
+        mt_interface = NULL;
     }
     
     work_loop->removeEventSource(command_gate);
     OSSafeReleaseNULL(command_gate);
     
+    if (work_loop) {
+        work_loop->release();
+        work_loop = NULL;
+    }
+
+    if (hid_interface) {
+        hid_interface->close(this);
+        hid_interface->release();
+        hid_interface = NULL;
+    }
+    
+    if (transducers) {
+        for (int i = 0; i < transducers->getCount(); i++) {
+            OSObject* object = transducers->getObject(i);
+            if (object) {
+                object->release();
+            }
+        }
+        OSSafeReleaseNULL(transducers);
+    }
+
+    
     PMstop();
+    IOLog("%s::%s handleStop called, resources released\n", getName(), name);
+
 }
 
 
@@ -357,4 +385,53 @@ const char* AlpsT4USBEventDriver::getProductName() {
     OSString* name = getProduct();
     
     return name->getCStringNoCopy();
+}
+
+AlpsT4USBEventDriver* AlpsT4USBEventDriver::probe(IOService* provider, SInt32* score) {
+    if (!super::probe(provider, score)) {
+        return NULL;
+    }
+
+    return this;
+
+}
+
+void AlpsT4USBEventDriver::stop(IOService* provider) {
+    super::stop(provider);
+    
+    if (mt_interface) {
+        mt_interface->stop(this);
+        mt_interface->release();
+        mt_interface = NULL;
+    }
+    
+    work_loop->removeEventSource(command_gate);
+    OSSafeReleaseNULL(command_gate);
+    
+    if (work_loop) {
+        work_loop->release();
+        work_loop = NULL;
+    }
+    
+    if (hid_interface) {
+        hid_interface->close(this);
+        hid_interface->release();
+        hid_interface = NULL;
+    }
+    
+    if (transducers) {
+        for (int i = 0; i < transducers->getCount(); i++) {
+            OSObject* object = transducers->getObject(i);
+            if (object) {
+                object->release();
+            }
+        }
+        OSSafeReleaseNULL(transducers);
+    }
+    
+    
+    PMstop();
+    IOLog("%s::%s stop called, resources released\n", getName(), name);
+    
+
 }

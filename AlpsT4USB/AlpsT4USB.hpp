@@ -85,16 +85,16 @@ public:
     
     /* @inherit */
     bool start(IOService* provider) override;
-    void stop(IOService* provider);
+    void stop(IOService* provider) override;
     bool init(OSDictionary *properties) override;
     AlpsT4USBEventDriver* probe(IOService* provider, SInt32* score) override;
 
     
-    bool handleStart(IOService* provider);
-    void handleStop(IOService* provider);
+    bool handleStart(IOService* provider) override;
+    void handleStop(IOService* provider) override;
     
     virtual IOReturn message(UInt32 type, IOService* provider, void* argument) override;
-    
+    bool didTerminate(IOService* provider, IOOptionBits options, bool* defer) override;
 
     /* @inherit */
     IOReturn setPowerState(unsigned long whichState, IOService* whatDevice) override;

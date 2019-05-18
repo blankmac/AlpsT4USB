@@ -63,8 +63,6 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
     if (!transducers)
         return;
     
-    
-    
     t4_input_report reportData;
     
     unsigned int x, y, z;
@@ -121,7 +119,6 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
     tp_event.contact_count = contactCount;
     tp_event.transducers = transducers;
     
-    
     mt_interface->handleInterruptReport(tp_event, timestamp);
     
     
@@ -139,7 +136,7 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     
     if (!hid_interface->open(this, 0, OSMemberFunctionCast(IOHIDInterface::InterruptReportAction, this, &AlpsT4USBEventDriver::handleInterruptReport), NULL))
         return false;
-
+    
     hid_device = OSDynamicCast(IOHIDDevice, hid_interface->getParentEntry(gIOServicePlane));
     
     if (!hid_device)
@@ -151,7 +148,7 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     
     registerPowerDriver(this, VoodooI2CIOPMPowerStates, kVoodooI2CIOPMNumberPowerStates);
 
-    hid_device->joinPMtree(this);
+    hid_interface->joinPMtree(this);
     
 
     publishMultitouchInterface();
@@ -190,7 +187,6 @@ IOReturn AlpsT4USBEventDriver::setPowerState(unsigned long whichState, IOService
     }
     return kIOPMAckImplied;
 }
-
 
 
 UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offset, unsigned long length)
@@ -266,8 +262,8 @@ IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
 exit:
     if (mt_interface) {
         mt_interface->stop(this);
-        mt_interface->release();
-        mt_interface = NULL;
+ //       mt_interface->release();
+ //       mt_interface = NULL;
     }
     
     return kIOReturnError;
@@ -305,8 +301,8 @@ void AlpsT4USBEventDriver::handleStop(IOService* provider) {
 
     if (mt_interface) {
         mt_interface->stop(this);
-        mt_interface->release();
-        mt_interface = NULL;
+ //       mt_interface->release();
+ //       mt_interface = NULL;
     }
     
     work_loop->removeEventSource(command_gate);
@@ -332,7 +328,6 @@ void AlpsT4USBEventDriver::handleStop(IOService* provider) {
         }
         OSSafeReleaseNULL(transducers);
     }
-
     
     PMstop();
     IOLog("%s::%s handleStop called, resources released\n", getName(), name);
@@ -399,39 +394,14 @@ AlpsT4USBEventDriver* AlpsT4USBEventDriver::probe(IOService* provider, SInt32* s
 void AlpsT4USBEventDriver::stop(IOService* provider) {
     super::stop(provider);
     
-    if (mt_interface) {
-        mt_interface->stop(this);
-        mt_interface->release();
-        mt_interface = NULL;
-    }
-    
-    work_loop->removeEventSource(command_gate);
-    OSSafeReleaseNULL(command_gate);
-    
-    if (work_loop) {
-        work_loop->release();
-        work_loop = NULL;
-    }
-    
-    if (hid_interface) {
-        hid_interface->close(this);
-        hid_interface->release();
-        hid_interface = NULL;
-    }
-    
-    if (transducers) {
-        for (int i = 0; i < transducers->getCount(); i++) {
-            OSObject* object = transducers->getObject(i);
-            if (object) {
-                object->release();
-            }
-        }
-        OSSafeReleaseNULL(transducers);
-    }
-    
-    
-    PMstop();
     IOLog("%s::%s stop called, resources released\n", getName(), name);
-    
 
+}
+
+bool AlpsT4USBEventDriver::didTerminate(IOService* provider, IOOptionBits options, bool* defer) {
+    if (hid_interface)
+        hid_interface->close(this);
+    hid_interface = NULL;
+    
+    return super::didTerminate(provider, options, defer);
 }

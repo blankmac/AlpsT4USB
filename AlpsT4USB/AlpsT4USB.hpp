@@ -46,8 +46,6 @@ for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/
 #define T4_CMD_REGISTER_WRITE       0x07
 #define T4_INPUT_REPORT_ID          0x09
 
-#define T4_PRM_FEED_CONFIG_1        0xC2C4
-
 #define T4_I2C_ABS                  0x78
 
 #define T4_COUNT_PER_ELECTRODE      256
@@ -87,11 +85,9 @@ class AlpsT4USBEventDriver : public IOHIDEventService {
     OSDeclareDefaultStructors(AlpsT4USBEventDriver);
     
 public:
-    /* @inherit */
     
     void handleInterruptReport(AbsoluteTime timestamp, IOMemoryDescriptor *report, IOHIDReportType report_type, UInt32 report_id);
     
-    /* @inherit */
     bool start(IOService* provider) override;
     void stop(IOService* provider) override;
     bool init(OSDictionary *properties) override;
@@ -104,15 +100,9 @@ public:
     virtual IOReturn message(UInt32 type, IOService* provider, void* argument) override;
     bool didTerminate(IOService* provider, IOOptionBits options, bool* defer) override;
 
-    /* @inherit */
     IOReturn setPowerState(unsigned long whichState, IOService* whatDevice) override;
     
-    UInt16 t4_calc_check_sum(UInt8 *buffer,
-                             unsigned long offset, unsigned long length);
     
-    void put_unaligned_le32(uint32_t val, void *p);
-    void __put_unaligned_le16(uint16_t val, uint8_t *p);
-    void __put_unaligned_le32(uint32_t val, uint8_t *p);
     IOReturn publishMultitouchInterface();
     const char* getProductName();
     
@@ -134,6 +124,7 @@ private:
     
     OSArray* transducers;
     
+    UInt16 t4_calc_check_sum(UInt8 *buffer, unsigned long offset, unsigned long length);
     /* Sends a report to the device to instruct it to enter Touchpad mode */
     void enterPrecisionTouchpadMode();
 };

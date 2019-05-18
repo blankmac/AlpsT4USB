@@ -16,13 +16,11 @@ void AlpsT4USBEventDriver::enterPrecisionTouchpadMode() {
     
     buffer[0] = T4_FEATURE_REPORT_ID;
     buffer[1] = T4_CMD_REGISTER_WRITE;
-    buffer[8] = T4_I2C_ABS;
-    
-    put_unaligned_le32(T4_PRM_FEED_CONFIG_1, buffer + 2);
-    
+    buffer[2] = 0xC4;
+    buffer[3] = 0xC2;
     buffer[6] = 1;
     buffer[7] = 0;
-    
+    buffer[8] = T4_I2C_ABS;
     check_sum = t4_calc_check_sum(buffer, 1, 8);
     
     buffer[9] = (UInt8)check_sum;
@@ -221,23 +219,6 @@ UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offs
     sum2 = (sum2 & 0xFF) + (sum2 >> 8);
     
     return(sum2 << 8 | sum1);
-}
-
-void AlpsT4USBEventDriver::put_unaligned_le32(uint32_t val, void *p)
-{
-    __put_unaligned_le32(val, (uint8_t*)p);
-}
-
-void AlpsT4USBEventDriver::__put_unaligned_le16(uint16_t val, uint8_t *p)
-{
-    *p++ = val;
-    *p++ = val >> 8;
-}
-
-void AlpsT4USBEventDriver::__put_unaligned_le32(uint32_t val, uint8_t *p)
-{
-    __put_unaligned_le16(val >> 16, p + 2);
-    __put_unaligned_le16(val, p);
 }
 
 IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {

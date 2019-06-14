@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>KEXT</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.1</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>IOKitPersonalities</key>
@@ -29,6 +29,12 @@
 				<dict>
 					<key>DeviceUsage</key>
 					<integer>2</integer>
+					<key>DeviceUsagePage</key>
+					<integer>65281</integer>
+				</dict>
+				<dict>
+					<key>DeviceUsage</key>
+					<integer>1</integer>
 					<key>DeviceUsagePage</key>
 					<integer>65281</integer>
 				</dict>
@@ -47,12 +53,6 @@
 	</dict>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2019 blankmac. All rights reserved.</string>
-	<key>bcdDevice</key>
-	<integer>1552</integer>
-	<key>idVendor</key>
-	<integer>1102</integer>
-	<key>idProduct</key>
-	<integer>4630</integer>
 	<key>OSBundleLibraries</key>
 	<dict>
 		<key>com.alexandred.VoodooI2C</key>

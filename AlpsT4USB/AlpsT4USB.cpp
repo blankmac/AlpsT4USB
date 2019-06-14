@@ -205,7 +205,7 @@ UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offs
 }
 
 IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
-    mt_interface = new VoodooI2CMultitouchInterface;
+    mt_interface = OSTypeAlloc(VoodooI2CMultitouchInterface);
     
     if (!mt_interface || !mt_interface->init(NULL)) {
         goto exit;
@@ -219,6 +219,8 @@ IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
         goto exit;
     }
     
+    mt_interface->retain();
+    
     mt_interface->setProperty(kIOHIDVendorIDKey, hid_interface->getVendorID(), 32);
     mt_interface->setProperty(kIOHIDProductIDKey, hid_interface->getProductID(), 32);
 
@@ -231,6 +233,7 @@ IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
 exit:
     if (mt_interface) {
         mt_interface->stop(this);
+        mt_interface->detach(this);
  //       mt_interface->release();
  //       mt_interface = NULL;
     }
@@ -267,26 +270,6 @@ bool AlpsT4USBEventDriver::start(IOService* provider) {
 }
 
 void AlpsT4USBEventDriver::handleStop(IOService* provider) {
-
-    if (mt_interface) {
-        mt_interface->stop(this);
- //       mt_interface->release();
- //       mt_interface = NULL;
-    }
-    
-    work_loop->removeEventSource(command_gate);
-    OSSafeReleaseNULL(command_gate);
-    
-    if (work_loop) {
-        work_loop->release();
-        work_loop = NULL;
-    }
-
-    if (hid_interface) {
-        hid_interface->close(this);
-        hid_interface->release();
-        hid_interface = NULL;
-    }
     
     if (transducers) {
         for (int i = 0; i < transducers->getCount(); i++) {
@@ -297,7 +280,18 @@ void AlpsT4USBEventDriver::handleStop(IOService* provider) {
         }
         OSSafeReleaseNULL(transducers);
     }
+
+
+    if (mt_interface) {
+        mt_interface->stop(this);
+        mt_interface->detach(this);
+        OSSafeReleaseNULL(mt_interface);
+    }
     
+    work_loop->removeEventSource(command_gate);
+    OSSafeReleaseNULL(command_gate);
+    OSSafeReleaseNULL(work_loop);
+
     PMstop();
     IOLog("%s::%s handleStop called, resources released\n", getName(), name);
 
@@ -649,6 +643,8 @@ IOReturn AlpsT4USBEventDriver::u1_read_write_register(UInt32 address, UInt8 *rea
     OSData* input_updated = OSData::withBytes(input, U1_FEATURE_REPORT_LEN);
     IOBufferMemoryDescriptor* report = IOBufferMemoryDescriptor::withBytes(input_updated->getBytesNoCopy(0, U1_FEATURE_REPORT_LEN), input_updated->getLength(), kIODirectionInOut);
     
+    input_updated->release();
+    
     ret = hid_interface->setReport(report, kIOHIDReportTypeFeature, U1_FEATURE_REPORT_ID);
     
     if (read_flag) {
@@ -661,7 +657,7 @@ IOReturn AlpsT4USBEventDriver::u1_read_write_register(UInt32 address, UInt8 *rea
         
     }
     
-    input_updated->release();
+    report->release();
     
     return ret;
 }
@@ -725,10 +721,12 @@ IOReturn AlpsT4USBEventDriver::t4_read_write_register(UInt32 address, UInt8 *rea
         *read_val = readbuf[12];
     }
     
+    report->release();
     return ret;
     
 exit_readbuf:
 exit:
+    report->release();
     return ret;
 }
 

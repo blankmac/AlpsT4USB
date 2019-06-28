@@ -136,8 +136,6 @@ public:
     
     void handleInterruptReport(AbsoluteTime timestamp, IOMemoryDescriptor *report, IOHIDReportType report_type, UInt32 report_id);
     
-    bool start(IOService* provider) override;
-    void stop(IOService* provider) override;
     bool init(OSDictionary *properties) override;
     
     bool handleStart(IOService* provider) override;
@@ -168,9 +166,9 @@ protected:
 private:
     void t4_raw_event(AbsoluteTime timestamp, IOMemoryDescriptor *report, IOHIDReportType report_type, UInt32 report_id);
     void u1_raw_event(AbsoluteTime timestamp, IOMemoryDescriptor *report, IOHIDReportType report_type, UInt32 report_id);
-    bool ready = false;
-    uint64_t max_after_typing = 500000000;
-    uint64_t key_time = 0;
+    bool ready;
+    uint64_t max_after_typing;
+    uint64_t key_time;
     bool awake;
     dev_num dev_type;
     IOWorkLoop* work_loop;

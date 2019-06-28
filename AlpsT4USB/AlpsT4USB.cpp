@@ -11,6 +11,8 @@ OSDefineMetaClassAndStructors(AlpsT4USBEventDriver, IOHIDEventService);
 
 void AlpsT4USBEventDriver::t4_device_init() {
     
+    ready = false;
+    
     UInt8 tmp = '\0', sen_line_num_x, sen_line_num_y;
     alps_dev pri_data;
     IOReturn ret = kIOReturnSuccess;
@@ -90,6 +92,29 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
 }
 
 bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
+    
+    work_loop = this->getWorkLoop();
+    
+    if (!work_loop)
+        return false;
+    
+    command_gate = IOCommandGate::commandGate(this);
+    if (!command_gate) {
+        return false;
+    }
+    work_loop->addEventSource(command_gate);
+    
+    max_after_typing = 500000000;
+    key_time = 0;
+    
+    // Read QuietTimeAfterTyping configuration value (if available)
+    OSNumber* quietTimeAfterTyping = OSDynamicCast(OSNumber, getProperty("QuietTimeAfterTyping"));
+    
+    if (quietTimeAfterTyping != NULL)
+        max_after_typing = quietTimeAfterTyping->unsigned64BitValue() * 1000000;
+    
+    setProperty("VoodooI2CServices Supported", OSBoolean::withBoolean(true));
+    
     
     hid_interface = OSDynamicCast(IOHIDInterface, provider);
     
@@ -207,15 +232,12 @@ UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offs
 IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
     mt_interface = OSTypeAlloc(VoodooI2CMultitouchInterface);
     
-    if (!mt_interface || !mt_interface->init(NULL)) {
-        goto exit;
-    }
-    
-    if (!mt_interface->attach(this)) {
+    if (!mt_interface || !mt_interface->init(NULL) || !mt_interface->attach(this)) {
         goto exit;
     }
     
     if (!mt_interface->start(this)) {
+        mt_interface->detach(this);
         goto exit;
     }
     
@@ -231,42 +253,8 @@ IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
     return kIOReturnSuccess;
     
 exit:
-    if (mt_interface) {
-        mt_interface->stop(this);
-        mt_interface->detach(this);
- //       mt_interface->release();
- //       mt_interface = NULL;
-    }
-    
-    return kIOReturnError;
-}
-
-bool AlpsT4USBEventDriver::start(IOService* provider) {
-    if (!super::start(provider))
-        return false;
-    
-    work_loop = this->getWorkLoop();
-    
-    if (!work_loop)
-        return false;
-    
-    command_gate = IOCommandGate::commandGate(this);
-    if (!command_gate) {
-        return false;
-    }
-    work_loop->addEventSource(command_gate);
-    
-    
-    // Read QuietTimeAfterTyping configuration value (if available)
-    OSNumber* quietTimeAfterTyping = OSDynamicCast(OSNumber, getProperty("QuietTimeAfterTyping"));
-    
-    if (quietTimeAfterTyping != NULL)
-        max_after_typing = quietTimeAfterTyping->unsigned64BitValue() * 1000000;
-    
-    setProperty("VoodooI2CServices Supported", OSBoolean::withBoolean(true));
-
-
-    return true;
+        OSSafeReleaseNULL(mt_interface);
+        return kIOReturnError;
 }
 
 void AlpsT4USBEventDriver::handleStop(IOService* provider) {
@@ -343,13 +331,6 @@ const char* AlpsT4USBEventDriver::getProductName() {
     OSString* name = getProduct();
     
     return name->getCStringNoCopy();
-}
-
-void AlpsT4USBEventDriver::stop(IOService* provider) {
-    super::stop(provider);
-    
-    IOLog("%s::%s stop called, resources released\n", getName(), name);
-
 }
 
 bool AlpsT4USBEventDriver::didTerminate(IOService* provider, IOOptionBits options, bool* defer) {
@@ -522,6 +503,8 @@ void AlpsT4USBEventDriver::u1_raw_event(AbsoluteTime timestamp, IOMemoryDescript
  }
 
 bool AlpsT4USBEventDriver::u1_device_init() {
+    
+    ready = false;
     
     UInt8 tmp, dev_ctrl, sen_line_num_x, sen_line_num_y;
     UInt8 pitch_x, pitch_y, resolution;

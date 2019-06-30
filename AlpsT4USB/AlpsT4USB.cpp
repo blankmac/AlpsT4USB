@@ -91,7 +91,9 @@ void AlpsT4USBEventDriver::handleInterruptReport(AbsoluteTime timestamp, IOMemor
     }
 }
 
-bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
+bool AlpsT4USBEventDriver::start(IOService* provider) {
+    if (!super::start(provider))
+        return false;
     
     work_loop = this->getWorkLoop();
     
@@ -117,6 +119,10 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     
     setProperty("VoodooI2CServices Supported", kOSBooleanTrue);
     
+    return true;
+}
+
+bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     
     hid_interface = OSDynamicCast(IOHIDInterface, provider);
     
@@ -258,9 +264,6 @@ exit:
 }
 
 void AlpsT4USBEventDriver::handleStop(IOService* provider) {
-    
-    OSSafeReleaseNULL(transducers);
-
 
     if (mt_interface) {
         mt_interface->stop(this);
@@ -273,10 +276,16 @@ void AlpsT4USBEventDriver::handleStop(IOService* provider) {
     OSSafeReleaseNULL(work_loop);
 
     PMstop();
-    IOLog("%s::%s handleStop called, resources released\n", getName(), name);
-
+    super::handleStop(provider);
 }
 
+void AlpsT4USBEventDriver::free() {
+    
+    OSSafeReleaseNULL(transducers);
+    
+    super::free();
+    
+}
 
 IOReturn AlpsT4USBEventDriver::message(UInt32 type, IOService* provider, void* argument)
 {

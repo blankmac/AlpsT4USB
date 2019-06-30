@@ -138,8 +138,12 @@ public:
     
     bool init(OSDictionary *properties) override;
     
+    bool start(IOService* provider) override;
+    
     bool handleStart(IOService* provider) override;
     void handleStop(IOService* provider) override;
+    
+    void free() override;
     
     virtual IOReturn message(UInt32 type, IOService* provider, void* argument) override;
     bool didTerminate(IOService* provider, IOOptionBits options, bool* defer) override;

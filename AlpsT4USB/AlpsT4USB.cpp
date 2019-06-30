@@ -98,6 +98,8 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     if (!work_loop)
         return false;
     
+    work_loop->retain();
+    
     command_gate = IOCommandGate::commandGate(this);
     if (!command_gate) {
         return false;
@@ -113,7 +115,7 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     if (quietTimeAfterTyping != NULL)
         max_after_typing = quietTimeAfterTyping->unsigned64BitValue() * 1000000;
     
-    setProperty("VoodooI2CServices Supported", OSBoolean::withBoolean(true));
+    setProperty("VoodooI2CServices Supported", kOSBooleanTrue);
     
     
     hid_interface = OSDynamicCast(IOHIDInterface, provider);
@@ -244,7 +246,7 @@ IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
     mt_interface->setProperty(kIOHIDVendorIDKey, hid_interface->getVendorID(), 32);
     mt_interface->setProperty(kIOHIDProductIDKey, hid_interface->getProductID(), 32);
 
-    mt_interface->setProperty(kIOHIDDisplayIntegratedKey, OSBoolean::withBoolean(false));
+    mt_interface->setProperty(kIOHIDDisplayIntegratedKey, kOSBooleanFalse);
     
     mt_interface->registerService();
     

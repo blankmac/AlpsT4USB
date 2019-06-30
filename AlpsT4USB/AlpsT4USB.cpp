@@ -241,8 +241,6 @@ IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
         goto exit;
     }
     
-    mt_interface->retain();
-    
     mt_interface->setProperty(kIOHIDVendorIDKey, hid_interface->getVendorID(), 32);
     mt_interface->setProperty(kIOHIDProductIDKey, hid_interface->getProductID(), 32);
 
@@ -259,15 +257,7 @@ exit:
 
 void AlpsT4USBEventDriver::handleStop(IOService* provider) {
     
-    if (transducers) {
-        for (int i = 0; i < transducers->getCount(); i++) {
-            OSObject* object = transducers->getObject(i);
-            if (object) {
-                object->release();
-            }
-        }
-        OSSafeReleaseNULL(transducers);
-    }
+    OSSafeReleaseNULL(transducers);
 
 
     if (mt_interface) {

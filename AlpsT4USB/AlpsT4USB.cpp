@@ -137,6 +137,7 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
     switch (hid_interface->getProductID()) {
             
         case HID_PRODUCT_ID_T4_USB:
+        case HID_PRODUCT_ID_G1:
             dev_type = T4;
             break;
         case HID_PRODUCT_ID_U1:

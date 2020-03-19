@@ -1,6 +1,6 @@
 /*This code is derived and adapted from VoodooI2CHID's Multitouch Event Driver and Precision
  Touchpad Event Driver (https://github.com/alexandred/VoodooI2C) and the Linux kernel driver
- for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/hid/hid-alps.c)*/
+ for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/hid/hid-alps.c) */
 
 
 #include "AlpsT4USB.hpp"
@@ -63,13 +63,11 @@ void AlpsT4USBEventDriver::t4_device_init() {
     }
     pri_data.max_fingers = 5;
 
-    if (mt_interface) {
-        mt_interface->logical_max_x = pri_data.x_max;
-        mt_interface->logical_max_y = pri_data.y_max;
-        mt_interface->physical_max_x = 1024;
-        mt_interface->physical_max_y = 614;
-        
-    }
+    setProperty(VOODOO_INPUT_LOGICAL_MAX_X_KEY, pri_data.x_max, 32);
+    setProperty(VOODOO_INPUT_LOGICAL_MAX_Y_KEY, pri_data.y_max, 32);
+    
+    setProperty(VOODOO_INPUT_PHYSICAL_MAX_X_KEY, 10240, 32);
+    setProperty(VOODOO_INPUT_PHYSICAL_MAX_Y_KEY, 6140, 32);
     
     ready = true;
     return;
@@ -163,9 +161,6 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
 
     hid_interface->joinPMtree(this);
     
-
-    publishMultitouchInterface();
-    
     switch (dev_type) {
         case T4:
             t4_device_init();
@@ -174,6 +169,8 @@ bool AlpsT4USBEventDriver::handleStart(IOService* provider) {
             u1_device_init();
             break;
     }
+    
+    publishMultitouchInterface();
     
     return true;
 }
@@ -218,7 +215,7 @@ UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offs
         return 0;
     
     while (length > 0) {
-        UInt32 tlen = length > 20 ? 20 : length;
+        unsigned long tlen = length > 20 ? 20 : length;
         
         length -= tlen;
         
@@ -239,53 +236,19 @@ UInt16 AlpsT4USBEventDriver::t4_calc_check_sum(UInt8 *buffer, unsigned long offs
 }
 
 IOReturn AlpsT4USBEventDriver::publishMultitouchInterface() {
-    mt_interface = OSTypeAlloc(VoodooI2CMultitouchInterface);
-    
-    if (!mt_interface || !mt_interface->init(NULL) || !mt_interface->attach(this)) {
-        goto exit;
-    }
-    
-    if (!mt_interface->start(this)) {
-        mt_interface->detach(this);
-        goto exit;
-    }
-    
-    mt_interface->setProperty(kIOHIDVendorIDKey, hid_interface->getVendorID(), 32);
-    mt_interface->setProperty(kIOHIDProductIDKey, hid_interface->getProductID(), 32);
-
-    mt_interface->setProperty(kIOHIDDisplayIntegratedKey, kOSBooleanFalse);
-    
-    mt_interface->registerService();
+    setProperty("IOFBTransform", 0ull, 32);
+    setProperty("VoodooInputSupported", kOSBooleanTrue);
     
     return kIOReturnSuccess;
-    
-exit:
-        OSSafeReleaseNULL(mt_interface);
-        return kIOReturnError;
 }
 
 void AlpsT4USBEventDriver::handleStop(IOService* provider) {
-
-    if (mt_interface) {
-        mt_interface->stop(this);
-        mt_interface->detach(this);
-        OSSafeReleaseNULL(mt_interface);
-    }
-    
     work_loop->removeEventSource(command_gate);
     OSSafeReleaseNULL(command_gate);
     OSSafeReleaseNULL(work_loop);
 
     PMstop();
     super::handleStop(provider);
-}
-
-void AlpsT4USBEventDriver::free() {
-    
-    OSSafeReleaseNULL(transducers);
-    
-    super::free();
-    
 }
 
 IOReturn AlpsT4USBEventDriver::message(UInt32 type, IOService* provider, void* argument)
@@ -310,18 +273,6 @@ bool AlpsT4USBEventDriver::init(OSDictionary *properties) {
     if (!super::init(properties)) {
         return false;
     }
-    transducers = NULL;
-    
-    transducers = OSArray::withCapacity(MAX_TOUCHES);
-    if (!transducers) {
-        return false;
-    }
-    DigitiserTransducerType type = kDigitiserTransducerFinger;
-    for (int i = 0; i < MAX_TOUCHES; i++) {
-        VoodooI2CDigitiserTransducer* transducer = VoodooI2CDigitiserTransducer::transducer(type, NULL);
-        transducers->setObject(transducer);
-    }
-    
 
     awake = true;
     
@@ -363,28 +314,20 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
     if (report_id != T4_INPUT_REPORT_ID)
         return;
     
-    if (!transducers)
-        return;
-    
     t4_input_report reportData;
     
     unsigned int x, y, z;
     
     report->readBytes(0, &reportData, T4_INPUT_REPORT_LEN);
     
-    
     int contactCount = 0;
     for (int i = 0; i < MAX_TOUCHES; i++) {
-        
-        VoodooI2CDigitiserTransducer* transducer = OSDynamicCast(VoodooI2CDigitiserTransducer,  transducers->getObject(i));
-        transducer->type = kDigitiserTransducerFinger;
-        transducer->logical_max_x = mt_interface->logical_max_x;
-        transducer->logical_max_y = mt_interface->logical_max_y;
+        VoodooInputTransducer* transducer = &inputMessage.transducers[i];
+
+        transducer->type = VoodooInputTransducerType::FINGER;
         transducer->id = 9;
-        if (!transducer) {
-            continue;
-        }
-        
+        transducer->secondaryId = i;
+
         x = reportData.contact[i].x_hi << 8 | reportData.contact[i].x_lo;
         y = reportData.contact[i].y_hi << 8 | reportData.contact[i].y_lo;
         y = 3060 - y + 255;
@@ -392,39 +335,37 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
              reportData.contact[i].palm > 0) * 62;
         
         bool contactValid = z;
-        transducer->is_valid = contactValid;
+        transducer->isValid = contactValid;
+        transducer->timestamp = timestamp;
+        transducer->supportsPressure = false;
+        
         if (contactValid) {
-            transducer->coordinates.x.update(x, timestamp);
-            transducer->coordinates.y.update(y, timestamp);
-            transducer->physical_button.update(reportData.button, timestamp);
-            transducer->tip_switch.update(1, timestamp);
-            transducer->secondary_id = i;
+            transducer->isTransducerActive = true;
+            transducer->secondaryId = i;
+            
+            transducer->previousCoordinates = transducer->currentCoordinates;
+            transducer->currentCoordinates.x = x;
+            transducer->currentCoordinates.y = y;
+            
+            transducer->isPhysicalButtonDown = reportData.button;
+           
             contactCount += 1;
-            
         } else {
-            transducer->secondary_id = i;
-            transducer->coordinates.x.update(transducer->coordinates.x.last.value, timestamp);
-            transducer->coordinates.y.update(transducer->coordinates.y.last.value, timestamp);
-            transducer->physical_button.update(0, timestamp);
-            transducer->tip_switch.update(0, timestamp);
-            x = 0;
-            y = 0;
-            z = 0;
-            
-            
+            transducer->isTransducerActive =  false;
+            transducer->secondaryId = i;
+            transducer->currentCoordinates = transducer->previousCoordinates;
+            transducer->isPhysicalButtonDown = false;
         }
         
-        
+        x = 0;
+        y = 0;
+        z = 0;
     }
     
+    inputMessage.contact_count = contactCount;
+    inputMessage.timestamp = timestamp;
     
-    VoodooI2CMultitouchEvent tp_event;
-    tp_event.contact_count = contactCount;
-    tp_event.transducers = transducers;
-    
-    mt_interface->handleInterruptReport(tp_event, timestamp);
-    
-     
+    super::messageClient(kIOMessageVoodooInputMessage, voodooInputInstance, &inputMessage, sizeof(VoodooInputEvent));
 }
 
 void AlpsT4USBEventDriver::u1_raw_event(AbsoluteTime timestamp, IOMemoryDescriptor *report, IOHIDReportType report_type, UInt32 report_id) {
@@ -446,62 +387,57 @@ void AlpsT4USBEventDriver::u1_raw_event(AbsoluteTime timestamp, IOMemoryDescript
     
     if (report_id != U1_ABSOLUTE_REPORT_ID)
         return;
-    
-    if (!transducers)
-        return;
 
     unsigned int x, y, z;
     
     UInt8 data[sizeof(report)] = {};
     report->readBytes(0, &data, sizeof(report));
     
-            int contactCount = 0;
-            for (int i = 0; i < MAX_TOUCHES; i++) {
- 
-                VoodooI2CDigitiserTransducer* transducer = OSDynamicCast(VoodooI2CDigitiserTransducer,  transducers->getObject(i));
-                transducer->type = kDigitiserTransducerFinger;
-                transducer->logical_max_x = mt_interface->logical_max_x;
-                transducer->logical_max_y = mt_interface->logical_max_y;
-                transducer->id = 3;
-                
-                if (!transducer) {
-                    continue;
-                }
-                
-                
-                UInt8 *contact = &data[i * 5];
-                x = get_unaligned_le16(contact + 3);
-                y = get_unaligned_le16(contact + 5);
-                z = contact[7] & 0x7F;
-                
-                bool contactValid = z;
-                transducer->is_valid = contactValid;
-
-                if (contactValid) {
-                    transducer->coordinates.x.update(x, timestamp);
-                    transducer->coordinates.y.update(y, timestamp);
-                    transducer->physical_button.update(data[1] & 0x1, timestamp);
-                    transducer->tip_switch.update(1, timestamp);
-                    transducer->secondary_id = i;
-                    contactCount += 1;
-                } else {
-                    transducer->secondary_id = i;
-                    transducer->coordinates.x.update(transducer->coordinates.x.last.value, timestamp);
-                    transducer->coordinates.y.update(transducer->coordinates.y.last.value, timestamp);
-                    transducer->physical_button.update(0, timestamp);
-                    transducer->tip_switch.update(0, timestamp);
-                    x = 0;
-                    y = 0;
-                    z = 0;
-                }
-            }
-    
-    VoodooI2CMultitouchEvent tp_event;
-    tp_event.contact_count = contactCount;
-    tp_event.transducers = transducers;
-    
-    mt_interface->handleInterruptReport(tp_event, timestamp);
+    int contactCount = 0;
+    for (int i = 0; i < MAX_TOUCHES; i++) {
+        VoodooInputTransducer* transducer = &inputMessage.transducers[i];
+        
+        transducer->type = VoodooInputTransducerType::FINGER;
+        transducer->id = 9;
+        transducer->secondaryId = 3;
+        
+        UInt8 *contact = &data[i * 5];
+        x = get_unaligned_le16(contact + 3);
+        y = get_unaligned_le16(contact + 5);
+        z = contact[7] & 0x7F;
+        
+        bool contactValid = z;
+        transducer->isValid = contactValid;
+        transducer->timestamp = timestamp;
+        transducer->supportsPressure = false;
+        
+        if (contactValid) {
+            transducer->isTransducerActive = true;
+            transducer->secondaryId = i;
             
+            transducer->previousCoordinates = transducer->currentCoordinates;
+            transducer->currentCoordinates.x = x;
+            transducer->currentCoordinates.y = y;
+            
+            transducer->isPhysicalButtonDown = data[1] & 0x1;
+           
+            contactCount += 1;
+        } else {
+            transducer->isTransducerActive =  false;
+            transducer->secondaryId = i;
+            transducer->currentCoordinates = transducer->previousCoordinates;
+            transducer->isPhysicalButtonDown = false;
+        }
+        
+        x = 0;
+        y = 0;
+        z = 0;
+    }
+    
+    inputMessage.contact_count = contactCount;
+    inputMessage.timestamp = timestamp;
+       
+    super::messageClient(kIOMessageVoodooInputMessage, voodooInputInstance, &inputMessage, sizeof(VoodooInputEvent));
  }
 
 bool AlpsT4USBEventDriver::u1_device_init() {
@@ -580,13 +516,11 @@ bool AlpsT4USBEventDriver::u1_device_init() {
         pri_data.btn_cnt = 1;
     }
     
-    if (mt_interface) {
-        mt_interface->logical_max_x = pri_data.x_max;
-        mt_interface->logical_max_y = pri_data.y_max;
-        mt_interface->physical_max_x = pri_data.x_active_len_mm; // This is probably very wrong
-        mt_interface->physical_max_y = pri_data.y_active_len_mm; // This is probably very wrong
-        
-    }
+    setProperty(VOODOO_INPUT_LOGICAL_MAX_X_KEY, pri_data.x_max, 32);
+    setProperty(VOODOO_INPUT_LOGICAL_MAX_Y_KEY, pri_data.y_max, 32);
+       
+    setProperty(VOODOO_INPUT_PHYSICAL_MAX_X_KEY, pri_data.x_active_len_mm * 10, 32);
+    setProperty(VOODOO_INPUT_PHYSICAL_MAX_Y_KEY, pri_data.y_active_len_mm * 10, 32);
 
     ready = true;
     return true;
@@ -741,4 +675,20 @@ UInt16 AlpsT4USBEventDriver::get_unaligned_le16(const void *p)
 UInt16 AlpsT4USBEventDriver::__get_unaligned_le16(const UInt8 *p)
 {
     return p[0] | p[1] << 8;
+}
+
+bool AlpsT4USBEventDriver::handleOpen(IOService *forClient, IOOptionBits options, void *arg) {
+    if (forClient && forClient->getProperty(VOODOO_INPUT_IDENTIFIER)) {
+        voodooInputInstance = forClient;
+        voodooInputInstance->retain();
+        
+        return true;
+    }
+    
+    return super::handleOpen(forClient, options, arg);
+}
+
+void AlpsT4USBEventDriver::handleClose(IOService *forClient, IOOptionBits options) {
+    OSSafeReleaseNULL(voodooInputInstance);
+    super::handleClose(forClient, options);
 }

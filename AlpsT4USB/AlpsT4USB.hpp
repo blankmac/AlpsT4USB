@@ -1,7 +1,7 @@
 
 /*This code is derived and adapted from VoodooI2CHID's Multitouch Event Driver and Precision
 Touchpad Event Driver (https://github.com/alexandred/VoodooI2C) and the Linux kernel driver
-for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/hid/hid-alps.c)*/
+for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/hid/hid-alps.c) */
 
 
 
@@ -29,9 +29,8 @@ for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/
 #include <IOKit/hid/IOHIDUsageTables.h>
 #include <IOKit/hid/IOHIDDevice.h>
 
-
-#include "VoodooI2CMultitouchInterface.hpp"
-#include "MultitouchHelpers.hpp"
+#include "../VoodooInput/VoodooInput/VoodooInputMultitouch/VoodooInputTransducer.h"
+#include "../VoodooInput/VoodooInput/VoodooInputMultitouch/VoodooInputMessages.h"
 
 #include "helpers.hpp"
 
@@ -144,7 +143,8 @@ public:
     bool handleStart(IOService* provider) override;
     void handleStop(IOService* provider) override;
     
-    void free() override;
+    bool handleOpen(IOService *forClient, IOOptionBits options, void *arg) override;
+    void handleClose(IOService *forClient, IOOptionBits options) override;
     
     virtual IOReturn message(UInt32 type, IOService* provider, void* argument) override;
     bool didTerminate(IOService* provider, IOOptionBits options, bool* defer) override;
@@ -166,7 +166,6 @@ public:
 protected:
     const char* name;
     IOHIDInterface* hid_interface;
-    VoodooI2CMultitouchInterface* mt_interface;
     
 private:
     void t4_raw_event(AbsoluteTime timestamp, IOMemoryDescriptor *report, IOHIDReportType report_type, UInt32 report_id);
@@ -179,7 +178,8 @@ private:
     IOWorkLoop* work_loop;
     IOCommandGate* command_gate;
     
-    OSArray* transducers;
+    VoodooInputEvent inputMessage;
+    IOService* voodooInputInstance;
     
     UInt16 t4_calc_check_sum(UInt8 *buffer, unsigned long offset, unsigned long length);
     /* Sends a report to the device to instruct it to enter Touchpad mode */

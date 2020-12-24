@@ -20,7 +20,7 @@ To build --
 ```
 git clone https://github.com/blankmac/AlpsT4USB.git
 cd AlpsT4USB
-git submodule init && git submodule udpate
+git submodule init && git submodule update
 ```
 
 Then add the MacKernel SDK.

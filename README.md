@@ -10,7 +10,26 @@ also be installed to /Library/Extensions.
 
 # Experimental
 
-The latest release of this kext *should* also work for I2C Alps touchpad devices with the following device IDs - 0x1209, 0x120b, 0x120c but it is currently untested.  Since it only subclasses the Event Service, you will always need to install VoodooI2C / VoodooI2CHID to instantiate the hid device.  If you have an I2C Alps touchpad and try the kext, please report in the VoodooI2C gitter chat whether or not it works for you.
+~The latest release of this kext *should* also work for I2C Alps touchpad devices with the following device IDs - 0x1209, 0x120b, 0x120c but it is currently untested.  Since it only subclasses the Event Service, you will always need to install VoodooI2C / VoodooI2CHID to instantiate the hid device.  If you have an I2C Alps touchpad and try the kext, please report in the VoodooI2C gitter chat whether or not it works for you.~
+
+Ok, so that doesn't work at all unfortunately.  The code as written isn't able to kick an I2C Alps touchpad into precision mode.  The best way forward is to write a standalone kext based on one of VoodooI2C's current satellites (ie - Elan, etc).
+
+# Building AlpsT4USB
+
+To build --
+```
+git clone https://github.com/blankmac/AlpsT4USB.git
+cd AlpsT4USB
+git submodule init && git submodule udpate
+cd ..
+```
+
+Then add the MacKernel SDK.
+```
+git clone https://github.com/acidanthera/MacKernelSDK.git
+```
+
+Open the main project in Xcode and build away.  :)
 
 # Credits
 This code is derived and adapted from VoodooI2CHID's Multitouch Event Driver and Precision

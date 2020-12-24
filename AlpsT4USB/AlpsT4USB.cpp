@@ -324,10 +324,10 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
     for (int i = 0; i < MAX_TOUCHES; i++) {
         VoodooInputTransducer* transducer = &inputMessage.transducers[i];
 
+        transducer->fingerType = (MT2FingerType) (kMT2FingerTypeIndexFinger + (i % 4));
         transducer->type = VoodooInputTransducerType::FINGER;
-        transducer->id = 9;
         transducer->secondaryId = i;
-
+        
         x = reportData.contact[i].x_hi << 8 | reportData.contact[i].x_lo;
         y = reportData.contact[i].y_hi << 8 | reportData.contact[i].y_lo;
         y = 3060 - y + 255;
@@ -365,6 +365,23 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
     inputMessage.contact_count = contactCount;
     inputMessage.timestamp = timestamp;
     
+    if (contactCount >= 4 || inputMessage.transducers->isPhysicalButtonDown) {
+        // simple thumb detection: to find the lowest finger touch in the vertical direction.
+        UInt32 y_max = 0;
+        int thumb_index = 0;
+        for (int i = 0; i < contactCount; i++) {
+            VoodooInputTransducer* inputTransducer = &inputMessage.transducers[i];
+            if (inputTransducer->isValid && inputTransducer->currentCoordinates.y >= y_max) {
+                y_max = inputTransducer->currentCoordinates.y;
+                thumb_index = i;
+            }
+        }
+        inputMessage.transducers[thumb_index].fingerType = kMT2FingerTypeThumb;
+    }
+
+    
+    
+    
     super::messageClient(kIOMessageVoodooInputMessage, voodooInputInstance, &inputMessage, sizeof(VoodooInputEvent));
 }
 
@@ -398,7 +415,7 @@ void AlpsT4USBEventDriver::u1_raw_event(AbsoluteTime timestamp, IOMemoryDescript
         VoodooInputTransducer* transducer = &inputMessage.transducers[i];
         
         transducer->type = VoodooInputTransducerType::FINGER;
-        transducer->id = 9;
+        transducer->fingerType = (MT2FingerType) (kMT2FingerTypeIndexFinger + (i % 4));
         transducer->secondaryId = 3;
         
         UInt8 *contact = &data[i * 5];
@@ -436,6 +453,21 @@ void AlpsT4USBEventDriver::u1_raw_event(AbsoluteTime timestamp, IOMemoryDescript
     
     inputMessage.contact_count = contactCount;
     inputMessage.timestamp = timestamp;
+    
+    if (contactCount >= 4 || inputMessage.transducers->isPhysicalButtonDown) {
+        // simple thumb detection: to find the lowest finger touch in the vertical direction.
+        UInt32 y_max = 0;
+        int thumb_index = 0;
+        for (int i = 0; i < contactCount; i++) {
+            VoodooInputTransducer* inputTransducer = &inputMessage.transducers[i];
+            if (inputTransducer->isValid && inputTransducer->currentCoordinates.y >= y_max) {
+                y_max = inputTransducer->currentCoordinates.y;
+                thumb_index = i;
+            }
+        }
+        inputMessage.transducers[thumb_index].fingerType = kMT2FingerTypeThumb;
+    }
+
        
     super::messageClient(kIOMessageVoodooInputMessage, voodooInputInstance, &inputMessage, sizeof(VoodooInputEvent));
  }

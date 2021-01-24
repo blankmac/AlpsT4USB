@@ -22,7 +22,7 @@ for the alps t4 touchpad (https://github.com/torvalds/linux/blob/master/drivers/
 
 
 #include "IOKit/hid/IOHIDEvent.h"
-#include <IOKit/hidevent/IOHIDEventService.h>
+#include "IOKit/hid/IOHIDEventService.h"
 #include "IOKit/hid/IOHIDEventTypes.h"
 #include <IOKit/hidsystem/IOHIDTypes.h>
 #include "IOKit/hid/IOHIDPrivateKeys.h"

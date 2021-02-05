@@ -317,7 +317,7 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
     
     t4_input_report reportData;
     
-    unsigned int x, y, z;
+    unsigned int x, y;
     
     report->readBytes(0, &reportData, T4_INPUT_REPORT_LEN);
     
@@ -332,10 +332,9 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
         x = reportData.contact[i].x_hi << 8 | reportData.contact[i].x_lo;
         y = reportData.contact[i].y_hi << 8 | reportData.contact[i].y_lo;
         y = 3060 - y + 255;
-        z = (reportData.contact[i].palm < 0x80 &&
+        bool contactValid= (reportData.contact[i].palm < 0x80 &&
              reportData.contact[i].palm > 0) * 62;
         
-        bool contactValid = z;
         transducer->isValid = contactValid;
         transducer->timestamp = timestamp;
         transducer->supportsPressure = false;
@@ -355,15 +354,11 @@ void AlpsT4USBEventDriver::t4_raw_event(AbsoluteTime timestamp, IOMemoryDescript
             transducer->isTransducerActive =  false;
             transducer->secondaryId = i;
             transducer->currentCoordinates = transducer->previousCoordinates;
-            transducer->isPhysicalButtonDown = false;
+            transducer->isPhysicalButtonDown = reportData.button;
         }
-        
-        x = 0;
-        y = 0;
-        z = 0;
     }
     
-    inputMessage.contact_count = contactCount;
+    inputMessage.contact_count = MAX_TOUCHES;
     inputMessage.timestamp = timestamp;
     
     if (contactCount >= 4 || inputMessage.transducers->isPhysicalButtonDown) {

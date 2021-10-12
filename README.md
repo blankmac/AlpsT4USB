@@ -24,17 +24,17 @@ also be installed to /Library/Extensions.~
 
 # Building AlpsT4USB
 
-~To build --
+To build --
 ```
 git clone https://github.com/blankmac/AlpsT4USB.git
 cd AlpsT4USB
 git submodule init && git submodule update
-```~
+```
 
-~Then add the MacKernel SDK.
+Then add the MacKernel SDK.
 ```
 git clone https://github.com/acidanthera/MacKernelSDK.git
-```~
+```
 
 ~Open the main project in Xcode and build away.  :)~
 

@@ -36,7 +36,7 @@ Then add the MacKernel SDK.
 git clone https://github.com/acidanthera/MacKernelSDK.git
 ```
 
-~Open the main project in Xcode and build away.  :)~
+Open the main project in Xcode and build away.  :)
 
 # Credits
 This code is derived and adapted from VoodooI2CHID's Multitouch Event Driver and Precision
